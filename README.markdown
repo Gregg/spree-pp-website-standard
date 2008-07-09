@@ -1,3 +1,4 @@
 = Spree Pp Website Standard
 
-Description goes here
+TODO: CheckoutController.rb rewrite
+TODO: Show a user's purchases (screencasts) on their My Account page.

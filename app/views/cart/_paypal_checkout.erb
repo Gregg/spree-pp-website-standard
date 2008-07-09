@@ -1,0 +1,46 @@
+<% if RAILS_ENV == 'development' %>
+<form action="https://www.sandbox.paypal.com/cgi-bin/webscr" method="post">
+<% else %>
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+<% end %>
+
+<!-- display payment summary here -->
+
+<input name="commit" type="submit" value="Make Payment" />
+
+<input id="business" name="business" type="hidden" value="joe@bidness.com" />
+<input id="invoice" name="invoice" type="hidden" value="<%= @cart.reference_hash %>" />
+
+<% @cart_items.each_with_index do |item, index| %>
+  <input id="item_name_<%= index + 1 %>" name="item_name_<%= index + 1 %>" type="hidden" value="<%= item.variant.product.name %>" />
+  <input id="amount_<%= index + 1 %>" name="amount_<%= index + 1 %>" type="hidden" value="<%= item.price %>" />
+  <input id="quantity_<%= index + 1 %>" name="quantity_<%= index + 1 %>" type="hidden" value="<%= item.quantity %>" />
+<% end %>
+
+<input id="amount" name="amount" type="hidden" value="58.97" />
+
+<input name="no_shipping" type="hidden" value="1" />
+<input id="cmd" name="cmd" type="hidden" value="_cart" />
+<input type="hidden" name="upload" value="1" />
+
+<input id="country" name="country" type="hidden" value="US" />
+<input id="zip" name="zip" type="hidden" value="32828" />
+
+
+<input id="notify_url" name="notify_url" type="hidden" value="http://72.189.229.38:3000/notify" />
+<input id="return" name="return" type="hidden" value="http://localhost:3000/thank_you" />
+
+<!-- input id="address_override" name="address_override" type="hidden" value="0" />
+<input id="charset" name="charset" type="hidden" value="utf-8" />
+<input id="no_note" name="no_note" type="hidden" value="1" />
+<input id="no_shipping" name="no_shipping" type="hidden" value="1" />
+<input id="item_name" name="item_name" type="hidden" value="Store purchase" />
+
+
+<input id="return" name="return" type="hidden" value="http://localhost:3000/account/show" />
+<input id="currency_code" name="currency_code" type="hidden" value="USD" />
+<input id="cancel_return" name="cancel_return" type="hidden" value="http://localhost:3000/account/show" />
+<input id="custom" name="custom" type="hidden" value="11" />
+<input id="item_number" name="item_number" type="hidden" value="11" / -->
+<!-- input id="bn" name="bn" type="hidden" value="ActiveMerchant" /-->
+</form>
