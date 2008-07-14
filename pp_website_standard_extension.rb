@@ -1,5 +1,5 @@
 # Uncomment this if you reference any of your controllers in activate
-# require_dependency 'application'
+require_dependency 'application'
 
 class PpWebsiteStandardExtension < Spree::Extension
   version "1.0"
@@ -13,7 +13,7 @@ class PpWebsiteStandardExtension < Spree::Extension
   # end
   
   def activate
-    # admin.tabs.add "Spree Pp Website Standard", "/admin/spree_pp_website_standard", :after => "Layouts", :visibility => [:all]
+
     Cart.class_eval do
       belongs_to :user
       before_create :create_reference_hash
@@ -22,6 +22,9 @@ class PpWebsiteStandardExtension < Spree::Extension
         self.reference_hash = Digest::SHA1.hexdigest(Time.now.to_s)
       end
     end
+    
+    # add a pending order state
+    ORDER_STATES << :pending
     
     # need to make it so the cart page is the only with the paypal button, so we ensure this gets run.
     CartController.class_eval do

@@ -1,9 +1,11 @@
 class CheckoutController < Spree::BaseController
   
+  include ActiveMerchant::Billing::Integrations
+  
   # You can send in test notifications on the developer page here:
   # https://developer.paypal.com/us/cgi-bin/devscr?cmd=_ipn-link-session
   def notify
-    # notify = Paypal::Notification.new(request.raw_post)
+    notify = Paypal::Notification.new(request.raw_post)
 
     # if there is a cart record with a reference_hash that matches "invoice"=>"fe130c554f6497a65de238b483c3a3754676a43d"
       # begin transaction
@@ -17,7 +19,7 @@ class CheckoutController < Spree::BaseController
       # find the order
     # end
     
-    # if notify.acknowledge
+    if notify.acknowledge
       #begin
       #  case notify.status
       #  when "Completed" 
@@ -31,12 +33,12 @@ class CheckoutController < Spree::BaseController
       #  end
       #ensure
       #  save order
-    # else
+    else
       # log error
       # create an error transaction
       # change order status
       # save order and transaction
-    # end
+    end
     
     # call notify hook (which will email users, etc.)
   end
