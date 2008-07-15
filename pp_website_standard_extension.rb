@@ -23,9 +23,6 @@ class PpWebsiteStandardExtension < Spree::Extension
       end
     end
     
-    # add a pending order state
-    ORDER_STATES << :pending
-    
     # need to make it so the cart page is the only with the paypal button, so we ensure this gets run.
     CartController.class_eval do
       before_filter :set_cart_user
