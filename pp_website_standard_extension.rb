@@ -27,8 +27,8 @@ class PpWebsiteStandardExtension < Spree::Extension
     CartController.class_eval do
       before_filter :set_cart_user
       
-      def set_cart_user
-        @cart.user = current_user 
+      def set_cart_user        
+        @cart.user = current_user if logged_in?
       end
     end
   
