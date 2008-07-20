@@ -54,9 +54,9 @@ describe CheckoutController do
     describe "before return" do
       
       before :each do
-        @mock_cart = mock_model(Cart)
+        @mock_cart = mock_model(Cart, :null_object => true)
         Cart.stub!(:find_by_reference_hash).with(any_args).and_return(@mock_cart)
-        @mock_order = mock_model(Order)
+        @mock_order = mock_model(Order, :null_object => true)
         Order.stub!(:new_from_cart).with(any_args).and_return(@mock_order)  
       end
       
@@ -70,10 +70,27 @@ describe CheckoutController do
         post :notify
       end
       
-      it "should create a payment for the order"
-      it "should remove the cart from the session"
-      it "should destroy the cart"
-      #it_should_behave_like "notifications in general"
+      it "should create a payment for the order" do
+        expected_payment_params = {:reference_hash => @mock_hash}
+        PaypalPayment.should_receive(:create).with(expected_payment_params)
+        post :notify
+      end
+      
+      it "should associate the payment with the order" do
+        mock_payment = mock "payment"
+        PaypalPayment.stub!(:create).with(any_args).and_return(mock_payment)
+        @mock_order.should_receive(:paypal_payment=).with(mock_payment)
+        post :notify
+      end
+      
+      it "should destroy the cart" do
+        @mock_cart.should_receive(:destroy)
+        post :notify
+      end
+      
+      it "should create a transaction record for the payment"
+      
+      it_should_behave_like "notifications in general"
     end
     
     describe "after return" do
@@ -82,7 +99,14 @@ describe CheckoutController do
         Cart.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(nil)
       end
       
-      it "should find the order using the reference hash"
+      it "should find the payment using the reference hash" do
+        mock_payment = mock_model(PaypalPayment)
+        PaypalPayment.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(mock_payment)
+        post :notify
+      end
+
+      it "should create a transaction record for the payment"
+      
       it_should_behave_like "notifications in general"
     end
     
