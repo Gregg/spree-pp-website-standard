@@ -31,6 +31,11 @@ class PpWebsiteStandardExtension < Spree::Extension
         @cart.user = current_user if logged_in?
       end
     end
+    
+    # add a PaypalPayment association to the Order model
+    Order.class_eval do 
+      has_one :paypal_payment
+    end
   
   end
   
