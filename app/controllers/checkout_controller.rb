@@ -25,6 +25,11 @@ class CheckoutController < Spree::BaseController
       @payment = PaypalPayment.find_by_reference_hash ipn.invoice
     end
     
+    # create a transaction which records the details of the notification
+    @payment.txns.build :transaction_id => ipn.transaction_id, :amount => ipn.gross, :fee => ipn.fee, 
+      :currency_type => ipn.currency_type, :status => ipn.status, :received_at => ipn.received_at
+    @payment.save                    
+    
     if ipn.acknowledge
       #begin
       #  case notify.status

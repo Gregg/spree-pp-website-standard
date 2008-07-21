@@ -5,12 +5,16 @@ describe CheckoutController do
 
     before(:each) do
       @mock_hash = "M0CKH4SH"
-      @stub_params = {:transaction_id => "ABC123", :gross => 35.00, :fee => 1.65, :currency_type => "USD",
-                     :received_at => 1.minute.ago.to_s(:db)}
-      @notification = mock("IPN Notification", @stub_params)
+      @notification = mock("IPN Notification", :null_object => true)
       @notification.stub!(:invoice).and_return(@mock_hash)
       @notification.stub!(:acknowledge).and_return(true)
       ActiveMerchant::Billing::Integrations::Paypal::Notification.stub!(:new).with(any_args).and_return @notification
+
+      mock_txns = mock("txns")
+      mock_txns.stub!(:build).with(any_args).and_return(mock_model(PaypalTxn))
+      @mock_payment = mock_model(PaypalPayment, :txns => mock_txns, :null_object => true)
+      PaypalPayment.stub!(:create).with(any_args).and_return(@mock_payment)      
+      PaypalPayment.stub!(:find_by_reference_hash).with(@mock_hash).and_return(@mock_payment)      
     end
 
     describe "notifications in general", :shared => true do
@@ -76,14 +80,12 @@ describe CheckoutController do
       
       it "should create a payment for the order" do
         expected_payment_params = {:reference_hash => @mock_hash}
-        PaypalPayment.should_receive(:create).with(expected_payment_params)
+        PaypalPayment.should_receive(:create).with(expected_payment_params).and_return(@mock_payment)
         post :notify
       end
       
       it "should associate the payment with the order" do
-        mock_payment = mock "payment"
-        PaypalPayment.stub!(:create).with(any_args).and_return(mock_payment)
-        @mock_order.should_receive(:paypal_payment=).with(mock_payment)
+        @mock_order.should_receive(:paypal_payment=).with(@mock_payment)
         post :notify
       end
       
@@ -91,8 +93,6 @@ describe CheckoutController do
         @mock_cart.should_receive(:destroy)
         post :notify
       end
-      
-      it "should create a transaction record for the payment" 
       
       it_should_behave_like "notifications in general"
     end
@@ -104,12 +104,9 @@ describe CheckoutController do
       end
       
       it "should find the payment using the reference hash" do
-        mock_payment = mock_model(PaypalPayment)
-        PaypalPayment.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(mock_payment)
+        PaypalPayment.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(@mock_payment)
         post :notify
       end
-
-      it "should create a transaction record for the payment"
       
       it_should_behave_like "notifications in general"
     end

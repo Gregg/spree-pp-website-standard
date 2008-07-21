@@ -1,6 +1,7 @@
-class CreatePayPalTxns < ActiveRecord::Migration
+class CreatePaypalTxns < ActiveRecord::Migration
   def self.up
-    create_table :pay_pal_txns do |t|
+    create_table :paypal_txns do |t|
+      t.references :paypal_payment
       t.string :transaction_id
       t.decimal :amount, :precision => 8, :scale => 2
       t.decimal :fee, :precision => 8, :scale => 2
@@ -12,6 +13,6 @@ class CreatePayPalTxns < ActiveRecord::Migration
   end
 
   def self.down
-    drop_table :pay_pal_txns
+    drop_table :paypal_txns
   end
 end

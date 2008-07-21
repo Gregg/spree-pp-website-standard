@@ -1,8 +1,8 @@
 require File.dirname(__FILE__) + '/../spec_helper'
 
-describe PayPalTxn do
+describe PaypalTxn do
   before(:each) do
-    @pay_pal_txn = PayPalTxn.new
+    @paypal_txn = PaypalTxn.new
   end
 
 end
