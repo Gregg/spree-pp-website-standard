@@ -5,7 +5,11 @@ describe CheckoutController do
 
     before(:each) do
       @mock_hash = "M0CKH4SH"
-      @notification = mock("IPN Notification", :invoice => @mock_hash, :acknowledge => true)
+      @stub_params = {:transaction_id => "ABC123", :gross => 35.00, :fee => 1.65, :currency_type => "USD",
+                     :received_at => 1.minute.ago.to_s(:db)}
+      @notification = mock("IPN Notification", @stub_params)
+      @notification.stub!(:invoice).and_return(@mock_hash)
+      @notification.stub!(:acknowledge).and_return(true)
       ActiveMerchant::Billing::Integrations::Paypal::Notification.stub!(:new).with(any_args).and_return @notification
     end
 
@@ -88,7 +92,7 @@ describe CheckoutController do
         post :notify
       end
       
-      it "should create a transaction record for the payment"
+      it "should create a transaction record for the payment" 
       
       it_should_behave_like "notifications in general"
     end

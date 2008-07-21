@@ -5,23 +5,27 @@ class CheckoutController < Spree::BaseController
   # You can send in test notifications on the developer page here:
   # https://developer.paypal.com/us/cgi-bin/devscr?cmd=_ipn-link-session
   def notify
-    notify = Paypal::Notification.new(request.raw_post)
+    ipn = Paypal::Notification.new(request.raw_post)
 
     # Check to see if there is a cart record matching the invoice hash
-    if cart = Cart.find_by_reference_hash(notify.invoice)      
+    if cart = Cart.find_by_reference_hash(ipn.invoice)      
       Order.transaction do
-        @order = Order.new_from_cart(cart)
         # Create an order from the cart (include the user if cart has one)
+        @order = Order.new_from_cart(cart)
         # Create a payment for the order
-        # Remove the cart from the session
+        @payment = PaypalPayment.create(:reference_hash => ipn.invoice)
+        @order.paypal_payment = @payment
+        @order.save
         # Destroy the cart (optimistic locking for the cart in case notify is racing us)
+        cart.destroy
       end
     else
       # return must have come in first
-      # find the order
+      # find the payment
+      @payment = PaypalPayment.find_by_reference_hash ipn.invoice
     end
     
-    if notify.acknowledge
+    if ipn.acknowledge
       #begin
       #  case notify.status
       #  when "Completed" 
