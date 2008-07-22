@@ -20,9 +20,9 @@ class CheckoutController < Spree::BaseController
         cart.destroy
       end
     else
-      # return must have come in first
-      # find the payment
+      # return must have come in first - so find the payment
       @payment = PaypalPayment.find_by_reference_hash ipn.invoice
+      @order = @payment.order
     end
     
     # create a transaction which records the details of the notification
@@ -31,28 +31,29 @@ class CheckoutController < Spree::BaseController
     @payment.save                    
     
     if ipn.acknowledge
-      #begin
-      #  case notify.status
-      #  when "Completed" 
-      #    
-      #    
-      #  when "Pending" 
-      #    
-      #    
-      #  else
-      #    logger.error("Failed to verify Paypal's notification, please investigate")
-      #  end
-      #ensure
-      #  save order
-      #end
+      case ipn.status
+      when "Completed" 
+        if ipn.gross == @order.total
+          @order.status = Order::Status::PAID
+        else
+          @order.status = Order::Status::INCOMPLETE
+          logger.error("Incorrect order total during Paypal's notification, please investigate")
+        end
+      when "Pending" 
+        @order.status = Order::Status::PENDING_PAYMENT
+      else
+        @order.status = Order::Status::INCOMPLETE
+        logger.error("Failed to verify Paypal's notification, please investigate")
+      end
     else
-      # log error
-      # create an error transaction
-      # change order status
-      # save order and transaction
+      logger.error("Failed to acknowledge Paypal's notification, please investigate.")
+      @order.status = Order::Status::INCOMPLETE
     end
     
+    @order.save
+
     # call notify hook (which will email users, etc.)
+    after_notify(@payment) if @order.status == Order::Status::PAID
   end
   
   # When they've returned from paypal
@@ -75,6 +76,14 @@ class CheckoutController < Spree::BaseController
     # Call the return hook (Application specific email, flash messages and redirects.)    
 
     # Render thank you (unless redirected by hook of course)
+  end
+  
+  def after_notify(payment)
+    # override this method in your own custom extension if you wish (see README for details)
+  end
+
+  def after_return(payment)
+    # override this method in your own custom extension if you wish (see README for details)
   end
   
 end

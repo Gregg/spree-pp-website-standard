@@ -5,92 +5,137 @@ describe CheckoutController do
 
     before(:each) do
       @mock_hash = "M0CKH4SH"
-      @notification = mock("IPN Notification", :null_object => true)
-      @notification.stub!(:invoice).and_return(@mock_hash)
-      @notification.stub!(:acknowledge).and_return(true)
-      ActiveMerchant::Billing::Integrations::Paypal::Notification.stub!(:new).with(any_args).and_return @notification
+      @ipn = mock("IPN Notification", :invoice => @mock_hash, :gross => 50, :null_object => true)
+      @ipn.stub!(:acknowledge).and_return(true)
+      ActiveMerchant::Billing::Integrations::Paypal::Notification.stub!(:new).with(any_args).and_return @ipn
+
+      @order = mock_model(Order, :null_object => true, :total => 50)
 
       mock_txns = mock("txns")
       mock_txns.stub!(:build).with(any_args).and_return(mock_model(PaypalTxn))
-      @mock_payment = mock_model(PaypalPayment, :txns => mock_txns, :null_object => true)
-      PaypalPayment.stub!(:create).with(any_args).and_return(@mock_payment)      
-      PaypalPayment.stub!(:find_by_reference_hash).with(@mock_hash).and_return(@mock_payment)      
+
+      @payment = mock_model(PaypalPayment, :txns => mock_txns, :null_object => true)
+      PaypalPayment.stub!(:create).with(any_args).and_return(@payment)      
+      PaypalPayment.stub!(:find_by_reference_hash).with(@mock_hash).and_return(@payment)      
     end
 
     describe "notifications in general", :shared => true do
       
-      before(:each) do
-      end
-      
       it "should acknowledge the notification" do
-        @notification.should_receive(:acknowledge)
+        @ipn.should_receive(:acknowledge)
         post :notify
       end
       
       describe "when acknowledgement succeeds" do
         
         before(:each) do
-          @notification.should_receive(:acknowledge).and_return(true)
+          @ipn.should_receive(:acknowledge).and_return(true)
         end
 
         describe "when status is completed" do
-          it "should verify the order total"
-          it "should change the order status to paid"
-          it "should create a transaction to reflect the successful verification"
-          it "should save the order"
+
+          before(:each) do
+            @ipn.should_receive(:status).at_least(:once).and_return("Completed")
+          end
+
+          describe "when the order total is verfied" do 
+            before(:each) do
+              @order.should_receive(:total).and_return(@ipn.gross)
+            end
+            it "should change the order status to paid if total is verifed" do
+              @order.should_receive(:status=).with(Order::Status::PAID)
+              post :notify
+            end          
+            it "should call the notify hook" do
+              @order.stub!(:status).and_return(Order::Status::PAID)
+              @controller.should_receive(:after_notify).with(@payment)
+              post :notify
+            end
+          end
+          
+          describe "when the order total is not verified" do      
+            before(:each) do
+              @order.should_receive(:total).and_return(1)
+            end
+            it "should change the order status to incomplete" do
+              @order.should_receive(:status=).with(Order::Status::INCOMPLETE)
+              post :notify
+            end
+            it "should not call the notify hook" do
+              @order.stub!(:status).and_return(Order::Status::INCOMPLETE)
+              @controller.should_not_receive(:after_notify).with(@payment)
+              post :notify
+            end
+          end
         end
+        
         describe "when status is pending" do
-          it "should verify the order total"
-          it "should change the order status to pending payment"
-          it "should create a transaction to reflect the pending notification"
-          it "should save the order"
+
+          before(:each) do
+            @ipn.should_receive(:status).at_least(:once).and_return("Pending")
+          end
+
+          it "should change the order status to pending payment" do
+            @order.should_receive(:status=).with(Order::Status::PENDING_PAYMENT)
+            post :notify
+          end
+          it "should not call the notify hook" do
+            @order.stub!(:status).and_return(Order::Status::PENDING_PAYMENT)
+            @controller.should_not_receive(:after_notify).with(@payment)
+            post :notify
+          end
         end
       end
 
       describe "when acknowledgement fails" do
         
         before(:each) do
-          @notification.should_receive(:acknowledge).and_return(true)
+          @ipn.should_receive(:acknowledge).and_return(true)
         end
         
-        it "should create an error transaction"
-        it "should change the order status to incomplete"
-        it "should save the order"
+        it "should change the order status to incomplete" do
+          @order.should_receive(:status=).with(Order::Status::INCOMPLETE)
+          post :notify
+        end
+        it "should not call the notify hook" do
+          @order.stub!(:status).and_return(Order::Status::INCOMPLETE)
+          @controller.should_not_receive(:after_notify).with(@payment)
+          post :notify
+        end
       end
     end
     
     describe "before return" do
       
       before :each do
-        @mock_cart = mock_model(Cart, :null_object => true)
-        Cart.stub!(:find_by_reference_hash).with(any_args).and_return(@mock_cart)
-        @mock_order = mock_model(Order, :null_object => true)
-        Order.stub!(:new_from_cart).with(any_args).and_return(@mock_order)  
+        @cart = mock_model(Cart, :null_object => true)
+        Cart.stub!(:find_by_reference_hash).with(any_args).and_return(@cart)
+        Order.stub!(:new_from_cart).with(any_args).and_return(@order)  
       end
       
       it "should locate the cart using the reference hash" do
-        Cart.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(@mock_cart)
+        Cart.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(@cart)
         post :notify
       end
       
       it "should create an order from the cart" do
-        Order.should_receive(:new_from_cart).with(@mock_cart).and_return(@mock_order)
+        Order.should_receive(:new_from_cart).with(@cart).and_return(@order)
         post :notify
       end
       
       it "should create a payment for the order" do
         expected_payment_params = {:reference_hash => @mock_hash}
-        PaypalPayment.should_receive(:create).with(expected_payment_params).and_return(@mock_payment)
+        PaypalPayment.should_receive(:create).with(expected_payment_params).and_return(@payment)
         post :notify
       end
       
       it "should associate the payment with the order" do
-        @mock_order.should_receive(:paypal_payment=).with(@mock_payment)
+        @order.should_receive(:paypal_payment=).with(@payment)
         post :notify
       end
       
       it "should destroy the cart" do
-        @mock_cart.should_receive(:destroy)
+        @cart.should_receive(:destroy)
         post :notify
       end
       
@@ -101,10 +146,11 @@ describe CheckoutController do
       
       before :each do
         Cart.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(nil)
+        @payment.should_receive(:order).and_return(@order)
       end
       
       it "should find the payment using the reference hash" do
-        PaypalPayment.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(@mock_payment)
+        PaypalPayment.should_receive(:find_by_reference_hash).with(@mock_hash).and_return(@payment)
         post :notify
       end
       
