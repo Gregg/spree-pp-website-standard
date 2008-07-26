@@ -16,6 +16,8 @@ CheckoutController.class_eval do
 end
 </pre>
 
+ * TODO: User account creation (if necessary) after notify and associate order with a user
+ * TODO: Make the paypal account stuff configurable via new preferences system
  * TODO: Taxes
  * TODO: Shipping
  * TODO: Refunds
