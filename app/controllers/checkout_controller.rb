@@ -6,25 +6,8 @@ class CheckoutController < Spree::BaseController
   # https://developer.paypal.com/us/cgi-bin/devscr?cmd=_ipn-link-session
   def notify
     ipn = Paypal::Notification.new(request.raw_post)
+    @order = find_order(ipn.invoice)
 
-    # Check to see if there is a cart record matching the invoice hash
-    if cart = Cart.find_by_reference_hash(ipn.invoice)      
-      Order.transaction do
-        # Create an order from the cart (include the user if cart has one)
-        @order = Order.new_from_cart(cart)
-        # Create a payment for the order
-        @payment = PaypalPayment.create(:reference_hash => ipn.invoice)
-        @order.paypal_payment = @payment
-        @order.save
-        # Destroy the cart (optimistic locking for the cart in case notify is racing us)
-        cart.destroy
-      end
-    else
-      # return must have come in first - so find the payment
-      @payment = PaypalPayment.find_by_reference_hash ipn.invoice
-      @order = @payment.order
-    end
-    
     # create a transaction which records the details of the notification
     @payment.txns.build :transaction_id => ipn.transaction_id, :amount => ipn.gross, :fee => ipn.fee, 
       :currency_type => ipn.currency_type, :status => ipn.status, :received_at => ipn.received_at
@@ -57,33 +40,64 @@ class CheckoutController < Spree::BaseController
   end
   
   # When they've returned from paypal
-  def return
+  def success
     
-    # if there is a cart record with a reference_hash that matches "invoice"=>"fe130c554f6497a65de238b483c3a3754676a43d"
-      # begin transaction
-        # Create an order from the cart
-        # Create a payment for the order
-        # Remove the cart from the session
-        # Destroy the cart (optimistic locking for the cart in case notify is racing us)
-      # end transaction
-    # else (notify must have come in first)
-      # Find the order
-    # end
-
-    # Add a transaction to the payment to record the information posted in the return 
-    # save order and transaction 
+    ref_hash = params[:invoice]
+    @order = find_order(ref_hash)    
     
-    # Call the return hook (Application specific email, flash messages and redirects.)    
+    # create a transaction for the order (record what little information we have from paypal)
+    @payment.txns.build :amount => params[:mc_gross], :status => "order-success"
+    @payment.save                        
+    
+    # call success hook (which will email users, etc.)
+    after_success(@payment)
 
     # Render thank you (unless redirected by hook of course)
+    redirect_to :action => :thank_you, :id => @order.id and return
   end
   
   def after_notify(payment)
     # override this method in your own custom extension if you wish (see README for details)
   end
 
-  def after_return(payment)
+  def after_success(payment)
     # override this method in your own custom extension if you wish (see README for details)
   end
+
+  def thank_you
+    @order = Order.find(params[:id])
+  end
+    
+  private
+  
+    def find_order(ref_hash)
+      # Check to see if there is a cart record matching the invoice hash
+      if cart = Cart.find_by_reference_hash(ref_hash)      
+        Order.transaction do          
+          # Create an order from the cart (include the user if cart has one)
+          @order = Order.new_from_cart(cart)
+          @order.status = Order::Status::PENDING_PAYMENT
+          @order.number = Order.generate_order_number 
+          @order.ip_address =  request.env['REMOTE_ADDR']
+          # Create a payment for the order
+          @payment = PaypalPayment.create(:reference_hash => ref_hash)
+          @order.paypal_payment = @payment
+          @order.save
+          # Destroy the cart (optimistic locking for the cart in case notify is racing us)
+          cart.destroy
+        end
+      else
+        # we must have already heard from paypal re: this order
+        @payment = PaypalPayment.find_by_reference_hash ref_hash
+        @order = @payment.order
+      end   
+      
+      # TODO - replace this temporary hack which zeroes out taxes and shipping
+      @order.tax_amount = 0
+      @order.ship_amount = 0
+      @order.total = @order.item_total
+         
+      @order
+    end
   
 end

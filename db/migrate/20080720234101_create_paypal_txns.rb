@@ -6,7 +6,7 @@ class CreatePaypalTxns < ActiveRecord::Migration
       t.decimal :amount, :precision => 8, :scale => 2
       t.decimal :fee, :precision => 8, :scale => 2
       t.string :currency_type
-      t.integer :status
+      t.string :status
       t.datetime :received_at
       t.timestamps
     end

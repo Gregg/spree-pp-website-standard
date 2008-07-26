@@ -1,6 +1,6 @@
 # Spree Pp Website Standard
 
-Overrides the default Spree checkout process and uses offsite payment processing via PayPal's Website Payment Standard.  There are also `after_notify` and `after_return` hooks which allow you to implment your own custom logic after the standard processing is performed.  These hooks should be added to `checkout_controller` in the extension you are using for your site specific customizations.
+Overrides the default Spree checkout process and uses offsite payment processing via PayPal's Website Payment Standard.  There are also `after_notify` and `after_success` hooks which allow you to implment your own custom logic after the standard processing is performed.  These hooks should be added to `checkout_controller` in the extension you are using for your site specific customizations.
 
 For example:
 
@@ -10,7 +10,7 @@ CheckoutController.class_eval do
     # email user and tell them we received their payment
   end
   
-  def after_return(payment)
+  def after_success(payment)
     # email user and thell them that we are processing their order, etc.
   end
 end
