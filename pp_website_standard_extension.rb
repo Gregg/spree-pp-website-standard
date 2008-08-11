@@ -1,16 +1,21 @@
 # Uncomment this if you reference any of your controllers in activate
 require_dependency 'application'
 
+unless RAILS_ENV == 'production'
+  PAYPAL_ACCOUNT = 'joe@bidness.com'
+  ActiveMerchant::Billing::Base.mode = :test
+else
+  PAYPAL_ACCOUNT = 'Gregg@railsenvy.com'
+end
+
 class PpWebsiteStandardExtension < Spree::Extension
   version "1.0"
   description "Describe your extension here"
   url "http://yourwebsite.com/spree_pp_website_standard"
 
-  # define_routes do |map|
-  #   map.namespace :admin do |admin|
-  #     admin.resources :whatever
-  #   end  
-  # end
+  define_routes do |map|
+     map.notify '/notify', :controller => 'checkout', :action => 'notify'
+  end
   
   def activate
 

@@ -55,7 +55,7 @@ describe CheckoutController do
           
           describe "when the order total is not verified" do      
             before(:each) do
-              @order.should_receive(:total).and_return(1)
+              @order.should_receive(:total).twice.and_return(1)
             end
             it "should change the order status to incomplete" do
               @order.should_receive(:status=).with(Order::Status::INCOMPLETE)
