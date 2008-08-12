@@ -30,18 +30,9 @@ class PpWebsiteStandardExtension < Spree::Extension
     Cart.class_eval do
       belongs_to :user
       before_create :create_reference_hash
-      
+
       def create_reference_hash
         self.reference_hash = Digest::SHA1.hexdigest(Time.now.to_s)
-      end
-    end
-    
-    # need to make it so the cart page is the only with the paypal button, so we ensure this gets run.
-    CartController.class_eval do
-      before_filter :set_cart_user
-      
-      def set_cart_user        
-        @cart.user = current_user if logged_in?
       end
     end
     

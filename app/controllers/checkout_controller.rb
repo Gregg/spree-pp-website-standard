@@ -56,6 +56,8 @@ class CheckoutController < Spree::BaseController
     ref_hash = params[:invoice]
     @order = find_order(ref_hash)
     
+    store_user_in_order(@order)
+    
     # create a transaction for the order (record what little information we have from paypal)
     @payment.txns.build :amount => params[:mc_gross], :status => "order-processed"
     @payment.save                        
@@ -64,7 +66,14 @@ class CheckoutController < Spree::BaseController
     after_success(@payment)
 
     # Render thank you (unless redirected by hook of course)
-    redirect_to :action => :thank_you, :id => @order.number and return
+    if logged_in?
+      store_user_in_order(@order)
+      render :action => 'thank_you'
+    else
+      flash[:notice] = "Please create an account or login so we can associate this order with an account"
+      session[:return_to] = url_for(:action => :thank_you, :id => @order.number)
+      redirect_to signup_path
+    end
   end
   
   def after_notify(payment)
@@ -76,7 +85,15 @@ class CheckoutController < Spree::BaseController
   end
 
   def thank_you
-    @order = Order.find_by_number(params[:id])
+    if logged_in?  # If the user is logged in then show the thank you
+      @order = Order.find_by_number(params[:id])
+      store_user_in_order(@order)
+    else # redirect them to make an account.  For some reason they may have not hit the success action, 
+         # in which case, they still need to create an account
+      flash[:notice] = "Please create an account or login so you can view this invoice"
+      session[:return_to] = url_for(:action => :thank_you, :id => @order.number)
+      redirect_to signup_path
+    end
   end
     
   private
@@ -112,6 +129,14 @@ class CheckoutController < Spree::BaseController
       @order.total = @order.item_total
          
       @order
+    end
+    
+    def store_user_in_order(order)
+      # if this user is logged in, but order doesn't have a user yet, associate it
+      if !order.user_id && logged_in?
+        order.user = current_user
+        order.save
+      end
     end
   
 end
