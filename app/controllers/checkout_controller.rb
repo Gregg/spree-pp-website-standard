@@ -23,7 +23,7 @@ class CheckoutController < Spree::BaseController
     if ipn.acknowledge
       case ipn.status
       when "Completed" 
-        if ipn.gross.to_f == @order.total.to_f
+        if ipn.gross.to_d == @order.total
           @order.status = Order::Status::PAID
         else
           @order.status = Order::Status::INCOMPLETE
@@ -113,6 +113,7 @@ class CheckoutController < Spree::BaseController
           # Get the tax & shipping
           @order.tax_amount = params[:tax].to_f if params[:tax]
           @order.ship_amount = params[:mc_shipping].to_f if params[:mc_shipping]
+          @order.total = @order.total
           @order.save
           # Destroy the cart (optimistic locking for the cart in case notify is racing us)
           cart.destroy
@@ -122,11 +123,6 @@ class CheckoutController < Spree::BaseController
         @payment = PaypalPayment.find_by_reference_hash ref_hash
         @order = @payment.order
       end   
-      
-      # TODO - replace this temporary hack which zeroes out taxes and shipping
-      @order.tax_amount = 0
-      @order.ship_amount = 0
-      @order.total = @order.item_total
          
       @order
     end
