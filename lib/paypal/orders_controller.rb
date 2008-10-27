@@ -1,13 +1,5 @@
-class CheckoutController < Spree::BaseController
-  before_filter :verify_authenticity_token, :except => 'notify'
-  
-  include ActiveMerchant::Billing::Integrations
-  
-  # When people hit the checkout button from other pages
-  # Bring them to the cart where we have them fill out the form
-  def index
-    redirect_to :controller => 'cart'
-  end
+module Paypal
+module OrdersController
   
   # You can send in test notifications on the developer page here:
   # https://developer.paypal.com/us/cgi-bin/devscr?cmd=_ipn-link-session
@@ -51,8 +43,10 @@ class CheckoutController < Spree::BaseController
   # When they've returned from paypal
   # Not really "success" as in they've paid.  "Success" as in the transaction is in progress
   # Notify is called when the transaction is successfull
-  def success
-    
+  def successful
+
+puts ">>>>>>>>>>>>>>>>> order: #{@order}"    
+=begin    
     ref_hash = params[:invoice]
     @order = find_order(ref_hash)
     
@@ -61,11 +55,14 @@ class CheckoutController < Spree::BaseController
     # create a transaction for the order (record what little information we have from paypal)
     @payment.txns.build :amount => params[:mc_gross], :status => "order-processed"
     @payment.save                        
+=end    
+    
     
     # call success hook (which will email users, etc.)
     after_success(@payment)
 
     # Render thank you (unless redirected by hook of course)
+=begin
     if logged_in?
       store_user_in_order(@order)
       render :action => 'thank_you'
@@ -74,6 +71,7 @@ class CheckoutController < Spree::BaseController
       session[:return_to] = url_for(:action => :thank_you, :id => @order.number)
       redirect_to signup_path
     end
+=end
   end
   
   def after_notify(payment)
@@ -95,7 +93,7 @@ class CheckoutController < Spree::BaseController
       redirect_to signup_path
     end
   end
-    
+=begin    
   private
   
     def find_order(ref_hash)
@@ -134,5 +132,6 @@ class CheckoutController < Spree::BaseController
         order.save
       end
     end
-  
+=end  
+end
 end

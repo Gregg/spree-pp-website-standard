@@ -1,16 +1,14 @@
 <% if RAILS_ENV == 'development' %>
-<form action="https://www.sandbox.paypal.com/cgi-bin/webscr" method="post" onsubmit="return check_zipcode();">
+  <form action="<%= Spree::Paypal::Config[:sandbox_url] %>" method="post" onsubmit="return check_zipcode();">
 <% else %>
-<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+  <form action="<%= Spree::Paypal::Config[:paypal_url] %>" method="post" onsubmit="return check_zipcode();">
 <% end %>
 
 <!-- display payment summary here -->
+<input id="business" name="business" type="hidden" value="<%= Spree::Paypal::Config[:account] %>" />
+<input id="invoice" name="invoice" type="hidden" value="<%= @order.number %>" />
 
-
-<input id="business" name="business" type="hidden" value="joe@bidness.com" />
-<input id="invoice" name="invoice" type="hidden" value="<%= @cart.reference_hash %>" />
-
-<% @cart_items.each_with_index do |item, index| %>
+<% @order.line_items.each_with_index do |item, index| %>
   <input id="item_name_<%= index + 1 %>" name="item_name_<%= index + 1 %>" type="hidden" value="<%= item.variant.product.name %>" />
   <input id="amount_<%= index + 1 %>" name="amount_<%= index + 1 %>" type="hidden" value="<%= item.price %>" />
   <input id="quantity_<%= index + 1 %>" name="quantity_<%= index + 1 %>" type="hidden" value="<%= item.quantity %>" />
@@ -30,8 +28,9 @@
 Zipcode (if you have one): <input id="zip" name="zip" type="text" value="" />
 </p>
 
-<input id="notify_url" name="notify_url" type="hidden" value="http://72.189.229.38:3000/notify" />
-<input id="return" name="return" type="hidden" value="http://localhost:3000/checkout/success" />
+<input id="notify_url" name="notify_url" type="hidden" value="<%= Spree::Paypal::Config[:ipn_notify_url] %>" />
+<input type="hidden" name="rm" value ="2"> <!-- tells paypal that the return should be POST instead of GET -->
+<input id="return" name="return" type="hidden" value="<%= order_paypal_payment_url(@order) %>" />
 
 <!-- input id="address_override" name="address_override" type="hidden" value="0" />
 <input id="charset" name="charset" type="hidden" value="utf-8" />

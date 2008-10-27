@@ -2,7 +2,6 @@ class CreatePaypalPayments < ActiveRecord::Migration
   def self.up
     create_table :paypal_payments do |t|
       t.references :order
-      t.string :reference_hash
       t.timestamps
     end
   end

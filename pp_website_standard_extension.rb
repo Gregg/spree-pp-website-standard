@@ -14,7 +14,7 @@ class PpWebsiteStandardExtension < Spree::Extension
   url "http://yourwebsite.com/spree_pp_website_standard"
 
   define_routes do |map|
-     map.notify '/notify', :controller => 'checkout', :action => 'notify'
+    map.resources :orders, :has_one => [:paypal_payment] 
   end
   
   def activate
@@ -27,13 +27,12 @@ class PpWebsiteStandardExtension < Spree::Extension
       end
     end
 
-    Cart.class_eval do
-      belongs_to :user
-      before_create :create_reference_hash
-
-      def create_reference_hash
-        self.reference_hash = Digest::SHA1.hexdigest(Time.now.to_s)
-      end
+    OrdersController.class_eval do
+skip_before_filter :verify_authenticity_token      
+#      before_filter :verify_authenticity_token, :except => 'notify'
+#      before_filter :load_object, :only => [:successful, :notify]
+      include ActiveMerchant::Billing::Integrations
+      include Paypal::OrdersController
     end
     
     # add a PaypalPayment association to the Order model
