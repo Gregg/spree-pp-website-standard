@@ -1,15 +1,18 @@
 class PaypalPaymentsController < Spree::BaseController
   include ActiveMerchant::Billing::Integrations
-  
-#  before_filter :verify_authenticity_token, :except => 'create'
+  skip_before_filter :verify_authenticity_token      
+  before_filter :load_object, :only => :successful
   layout 'application'
   
   resource_controller :singleton
   belongs_to :order
-  #protect_from_forgery :except => [:create, :notify]
 
   # NOTE: The Paypal Instant Payment Notification (IPN) results in the creation of a PaypalPayment
   create.after do
+    # mark the checkout process as complete (even if the ipn results in a failure - no point in letting the user 
+    # edit the order now)
+    @order.update_attribute("checkout_complete", true)                   
+    object.update_attribute("email", params[:payer_email])
     ipn = Paypal::Notification.new(request.raw_post)
 
     # create a transaction which records the details of the notification
@@ -41,12 +44,6 @@ class PaypalPaymentsController < Spree::BaseController
       @order.fail_payment!
       logger.info("Failed to acknowledge Paypal's notification, please investigate [order: #{@order.number}]")
     end
-=begin    
-    @order.save
- 
-    # call notify hook (which will email users, etc.)
-    after_notify(@payment) if @order.status == Order::Status::PAID
-=end    
   end
 
   create.response do |wants|
@@ -55,4 +52,31 @@ class PaypalPaymentsController < Spree::BaseController
     end
   end
 
+  # Action for handling the "return to site" link after user completes the transaction on the Paypal website.  
+  def successful 
+    @order.update_attribute("ip_address", request.env['REMOTE_ADDR'] || "unknown")
+    # its possible that the IPN has already been received at this point so that
+    unless @order.paypal_payment
+      # create a payment and record the successful transaction
+      paypal_payment = PaypalPayment.create(:order => @order, :email => params[:payer_email])
+      @order.paypal_payment = paypal_payment
+      paypal_payment.txns.create(:amount => params[:mc_gross].to_d, 
+                                 :status => "Processed",
+                                 :transaction_id => params[:txn_id],
+                                 :fee => params[:payment_fee],
+                                 :currency_type => params[:mc_currency],
+                                 :received_at => params[:payment_date])
+      # advance the state
+      @order.pend_payment!
+    end
+    
+    if logged_in?
+      @order.update_attribute("user", current_user)
+      redirect_to order_url(@order) and return
+    else
+      flash[:notice] = "Please create an account or login so we can associate this order with an account"
+      session[:return_to] = order_url(@order)
+      redirect_to signup_path
+    end
+  end
 end

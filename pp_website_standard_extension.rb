@@ -14,7 +14,12 @@ class PpWebsiteStandardExtension < Spree::Extension
   url "http://yourwebsite.com/spree_pp_website_standard"
 
   define_routes do |map|
-    map.resources :orders, :has_one => [:paypal_payment] 
+    #map.resources :orders, :has_one => [:paypal_payment] 
+    map.resources :orders do |order|
+      # we're kind of abusing the notion of a restful collection here but we're in the weird position of 
+      # not being able to create the payment before sending the request to paypal
+      order.resource :paypal_payment, :collection => {:successful => :post}
+    end  
   end
   
   def activate
@@ -33,14 +38,7 @@ class PpWebsiteStandardExtension < Spree::Extension
     fsm.events["pend_payment"] = PluginAWeek::StateMachine::Event.new(fsm, "pend_payment")
     fsm.events["fail_payment"].transition(:to => 'payment_failure')
     fsm.events["pend_payment"].transition(:to => 'payment_pending')
-
-#    OrdersController.class_eval do
-#skip_before_filter :verify_authenticity_token      
-#      before_filter :verify_authenticity_token, :except => 'notify'
-#      before_filter :load_object, :only => [:successful, :notify]
-#      include ActiveMerchant::Billing::Integrations
-#      include Paypal::PaController
-#    end
+    fsm.after_transition :to => 'payment_pending', :do => lambda {|order| order.update_attribute(:checkout_complete, true)}  
     
     # add a PaypalPayment association to the Order model
     Order.class_eval do 

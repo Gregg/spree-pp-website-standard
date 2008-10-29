@@ -18,10 +18,10 @@ if File.directory?(File.dirname(__FILE__) + "/matchers")
   Dir[File.dirname(__FILE__) + "/matchers/*.rb"].each {|file| require file }
 end
 
-#Spec::Runner.configure do |config|
-#  config.use_transactional_fixtures = true
-#  config.use_instantiated_fixtures  = false
-#  config.fixture_path = File.dirname(__FILE__) + '/fixtures'
+Spec::Runner.configure do |config|
+  config.use_transactional_fixtures = true
+  config.use_instantiated_fixtures  = false
+  config.fixture_path = File.dirname(__FILE__) + '/fixtures'
 
   # You can declare fixtures for each behaviour like this:
   #   describe "...." do
@@ -34,4 +34,10 @@ end
   #
   # If you declare global fixtures, be aware that they will be declared
   # for all of your examples, even those that don't use them.
-#end
+end
+
+def login(username)
+  user = users(username.to_sym)
+  request.session[:user_id] = user.id
+  user
+end

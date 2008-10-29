@@ -2,7 +2,7 @@ require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
 include ActiveMerchant::Billing::Integrations
 
 describe PaypalPaymentsController do
-  fixtures :orders
+  fixtures :users
   
   before(:each) do 
     @order = Order.create(:id => 100, :number => "SAMP-1001", :state => "in_progress", :total => 75.00)
@@ -13,14 +13,27 @@ describe PaypalPaymentsController do
   end
   
   describe "create" do
+    
+    def do_create
+      post :create, :order_id  => @order.id, :payer_email => "test@example.com"
+    end
+    
     before(:each) { @ipn.stub!(:acknowledge).and_return(true) }
     it "should create a paypal payment associated with the order" do    
-      post :create, :order_id  => @order.id
+      do_create
       @order.paypal_payment.should_not be_nil
     end
+    it "should set the paypal payment email" do
+      do_create
+      @order.paypal_payment.email.should == "test@example.com"
+    end
     it "should create a transaction for the paypal payment" do
-      post :create, :order_id  => @order.id
+      do_create
       @order.paypal_payment.txns.first.should_not be_nil
+    end
+    it "should mark the checkout as complete" do
+      do_create
+      @order.checkout_complete.should be_true
     end
     # TODO - check that the correct values are being assigned to the transaction
 
@@ -62,7 +75,58 @@ describe PaypalPaymentsController do
     end
   end  
   
-  describe "success" do
-    it "should set the IP address of the order"
+  describe "successful" do
+    describe "successful in general", :shared => true do
+      def do_successful
+        post :successful, :order_id  => @order.id, :mc_gross => @order.total.to_s, :payer_email => "test@example.com"
+      end
+      it "should set the IP address of the order" do
+        request.env['REMOTE_ADDR'] = "1.2.3.4"
+        do_successful
+        @order.ip_address.should == "1.2.3.4"
+      end      
+      describe "when logged in" do
+        before(:each) { @user = login(:pp_standard) }
+        it "should store the user with the order" do
+          do_successful
+          @order.user.should == @user
+        end
+        it "should redirect to the order details view" do
+          do_successful
+          response.should redirect_to(order_url(@order))
+        end
+      end
+      it "should redirect to the signup path (if not logged in)" do
+        do_successful
+        response.should redirect_to(signup_path)
+      end
+    end
+    describe "when ipn has not yet been received" do
+      it "should create a payment" do
+        do_successful
+        @order.paypal_payment.should_not be_nil
+      end
+      it "should set the order status to payment_pending" do
+        do_successful
+        @order.state.should == "payment_pending"
+      end
+      it "should mark the checkout as complete" do
+        do_successful
+        @order.checkout_complete.should be_true
+      end
+      it "should set the payment email" do
+        do_successful
+        @order.paypal_payment.email.should == "test@example.com"
+      end
+      it_should_behave_like "successful in general"         
+    end
+    describe "when ipn has already been received" do
+      before(:each) { @order.paypal_payment = PaypalPayment.new }
+      it "should not create a new paypal paypment" do
+        PaypalPayment.should_not_receive(:create).with(any_args)
+        do_successful
+      end
+      it_should_behave_like "successful in general"  
+    end
   end
 end
