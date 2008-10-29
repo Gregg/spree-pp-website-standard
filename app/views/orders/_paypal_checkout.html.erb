@@ -28,7 +28,7 @@
 Zipcode (if you have one): <input id="zip" name="zip" type="text" value="" />
 </p>
 
-<input id="notify_url" name="notify_url" type="hidden" value="<%= Spree::Paypal::Config[:ipn_notify_url] %>" />
+<input id="notify_url" name="notify_url" type="hidden" value="<%= Spree::Paypal::Config[:ipn_notify_host] + order_paypal_payment_path(@order) %>" />
 <input type="hidden" name="rm" value ="2"> <!-- tells paypal that the return should be POST instead of GET -->
 <input id="return" name="return" type="hidden" value="<%= order_paypal_payment_url(@order) %>" />
 

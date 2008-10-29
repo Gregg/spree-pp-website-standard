@@ -9,7 +9,7 @@ else
 end
 
 class PpWebsiteStandardExtension < Spree::Extension
-  version "1.0"
+  version "1.1"
   description "Describe your extension here"
   url "http://yourwebsite.com/spree_pp_website_standard"
 
@@ -27,13 +27,20 @@ class PpWebsiteStandardExtension < Spree::Extension
       end
     end
 
-    OrdersController.class_eval do
-skip_before_filter :verify_authenticity_token      
+    # add new events and states to the FSM
+    fsm = Order.state_machines['state']  
+    fsm.events["fail_payment"] = PluginAWeek::StateMachine::Event.new(fsm, "fail_payment")
+    fsm.events["pend_payment"] = PluginAWeek::StateMachine::Event.new(fsm, "pend_payment")
+    fsm.events["fail_payment"].transition(:to => 'payment_failure')
+    fsm.events["pend_payment"].transition(:to => 'payment_pending')
+
+#    OrdersController.class_eval do
+#skip_before_filter :verify_authenticity_token      
 #      before_filter :verify_authenticity_token, :except => 'notify'
 #      before_filter :load_object, :only => [:successful, :notify]
-      include ActiveMerchant::Billing::Integrations
-      include Paypal::OrdersController
-    end
+#      include ActiveMerchant::Billing::Integrations
+#      include Paypal::PaController
+#    end
     
     # add a PaypalPayment association to the Order model
     Order.class_eval do 

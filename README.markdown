@@ -6,23 +6,23 @@ You'll want to test this using a paypal sandbox account first.  Once you have a 
 
 Regarding Taxes and shipping, we assumed you'd want to use Paypal's system for this, which can also be configured through the "profile" page.  Taxes have been tested (sales tax), but not shipping, so you may want to give that a test run on the sandbox.
 
-There are also `after_notify` and `after_success` hooks which allow you to implment your own custom logic after the standard processing is performed.  These hooks should be added to `checkout_controller` in the extension you are using for your site specific customizations.
-
-For example:
+You may want to implement your own custom logic by adding `state_machine` hooks.  Just add these hooks in your site extension (don't change the `pp_website_standard` extension.) Here's an example of how to add the hooks to your site extension.
 
 <pre>
-CheckoutController.class_eval do  
-  def after_notify(payment)
+fsm = Order.state_machines['state']  
+fsm.after_transition :to => 'paid', :do => :after_payment
+fsm.after_transition :to => 'pending_payment', :do => :after_pending  
+
+Order.class_eval do  
+  def after_payment
     # email user and tell them we received their payment
   end
   
-  def after_success(payment)
+  def after_pending
     # email user and thell them that we are processing their order, etc.
   end
 end
-</pre>
-
-
+</pre>  
 
  * TODO: User account creation (if necessary) after notify and associate order with a user
  * TODO: Make the paypal account stuff configurable via new preferences system

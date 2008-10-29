@@ -1,67 +1,72 @@
 module Paypal
-module OrdersController
-  
-  # You can send in test notifications on the developer page here:
-  # https://developer.paypal.com/us/cgi-bin/devscr?cmd=_ipn-link-session
-  def notify
-    ipn = Paypal::Notification.new(request.raw_post)
-    @order = find_order(ipn.invoice)
+  module OrdersController
 
-    # create a transaction which records the details of the notification
-    @payment.txns.build :transaction_id => ipn.transaction_id, :amount => ipn.gross, :fee => ipn.fee, 
-      :currency_type => ipn.currency, :status => ipn.status, :received_at => ipn.received_at
-    @payment.save                    
+    include ActiveMerchant::Billing::Integrations
+        
+    # You can send in test notifications on the developer page here:
+    # https://developer.paypal.com/us/cgi-bin/devscr?cmd=_ipn-link-session
+    def notify
+      ipn = Paypal::Notification.new(request.raw_post)
+      # the IPN invoice is equivalent to the order number
+      @order = Order.find_by_number(ipn.invoice)
+
+      # create a payment for the order
+      
+      # create a transaction which records the details of the notification
+      @payment.txns.build :transaction_id => ipn.transaction_id, :amount => ipn.gross, :fee => ipn.fee, 
+        :currency_type => ipn.currency, :status => ipn.status, :received_at => ipn.received_at
+      @payment.save                    
     
-    if ipn.acknowledge
-      case ipn.status
-      when "Completed" 
-        if ipn.gross.to_d == @order.total
-          @order.status = Order::Status::PAID
+      if ipn.acknowledge
+        case ipn.status
+        when "Completed" 
+          if ipn.gross.to_d == @order.total
+            @order.status = Order::Status::PAID
+          else
+            @order.status = Order::Status::INCOMPLETE
+            logger.error("Incorrect order total during Paypal's notification, please investigate (Paypal processed #{ipn.gross}, and order total is #{@order.total})")
+          end
+        when "Pending" 
+          @order.status = Order::Status::PENDING_PAYMENT
         else
           @order.status = Order::Status::INCOMPLETE
-          logger.error("Incorrect order total during Paypal's notification, please investigate (Paypal processed #{ipn.gross}, and order total is #{@order.total})")
+          logger.error("Failed to verify Paypal's notification, please investigate")
         end
-      when "Pending" 
-        @order.status = Order::Status::PENDING_PAYMENT
       else
+        logger.error("Failed to acknowledge Paypal's notification, please investigate.")
         @order.status = Order::Status::INCOMPLETE
-        logger.error("Failed to verify Paypal's notification, please investigate")
       end
-    else
-      logger.error("Failed to acknowledge Paypal's notification, please investigate.")
-      @order.status = Order::Status::INCOMPLETE
+    
+      @order.save
+
+      # call notify hook (which will email users, etc.)
+      after_notify(@payment) if @order.status == Order::Status::PAID
+    
+      render :nothing => true
     end
-    
-    @order.save
-
-    # call notify hook (which will email users, etc.)
-    after_notify(@payment) if @order.status == Order::Status::PAID
-    
-    render :nothing => true
-  end
   
-  # When they've returned from paypal
-  # Not really "success" as in they've paid.  "Success" as in the transaction is in progress
-  # Notify is called when the transaction is successfull
-  def successful
+    # When they've returned from paypal
+    # Not really "success" as in they've paid.  "Success" as in the transaction is in progress
+    # Notify is called when the transaction is successfull
+    def successful
 
-puts ">>>>>>>>>>>>>>>>> order: #{@order}"    
+  puts ">>>>>>>>>>>>>>>>> order: #{@order}"    
 =begin    
     ref_hash = params[:invoice]
     @order = find_order(ref_hash)
-    
+  
     store_user_in_order(@order)
-    
+  
     # create a transaction for the order (record what little information we have from paypal)
     @payment.txns.build :amount => params[:mc_gross], :status => "order-processed"
     @payment.save                        
 =end    
     
     
-    # call success hook (which will email users, etc.)
-    after_success(@payment)
+      # call success hook (which will email users, etc.)
+      after_success(@payment)
 
-    # Render thank you (unless redirected by hook of course)
+      # Render thank you (unless redirected by hook of course)
 =begin
     if logged_in?
       store_user_in_order(@order)
@@ -72,30 +77,30 @@ puts ">>>>>>>>>>>>>>>>> order: #{@order}"
       redirect_to signup_path
     end
 =end
-  end
-  
-  def after_notify(payment)
-    # override this method in your own custom extension if you wish (see README for details)
-  end
-
-  def after_success(payment)
-    # override this method in your own custom extension if you wish (see README for details)
-  end
-
-  def thank_you
-    if logged_in?  # If the user is logged in then show the thank you
-      @order = Order.find_by_number(params[:id])
-      store_user_in_order(@order)
-    else # redirect them to make an account.  For some reason they may have not hit the success action, 
-         # in which case, they still need to create an account
-      flash[:notice] = "Please create an account or login so you can view this invoice"
-      session[:return_to] = url_for(:action => :thank_you, :id => @order.number)
-      redirect_to signup_path
     end
-  end
+  
+    def after_notify(payment)
+      # override this method in your own custom extension if you wish (see README for details)
+    end
+
+    def after_success(payment)
+      # override this method in your own custom extension if you wish (see README for details)
+    end
+
+    def thank_you
+      if logged_in?  # If the user is logged in then show the thank you
+        @order = Order.find_by_number(params[:id])
+        store_user_in_order(@order)
+      else # redirect them to make an account.  For some reason they may have not hit the success action, 
+           # in which case, they still need to create an account
+        flash[:notice] = "Please create an account or login so you can view this invoice"
+        session[:return_to] = url_for(:action => :thank_you, :id => @order.number)
+        redirect_to signup_path
+      end
+    end
 =begin    
   private
-  
+
     def find_order(ref_hash)
       # Check to see if there is a cart record matching the invoice hash
       if cart = Cart.find_by_reference_hash(ref_hash)      
@@ -121,10 +126,10 @@ puts ">>>>>>>>>>>>>>>>> order: #{@order}"
         @payment = PaypalPayment.find_by_reference_hash ref_hash
         @order = @payment.order
       end   
-         
+       
       @order
     end
-    
+  
     def store_user_in_order(order)
       # if this user is logged in, but order doesn't have a user yet, associate it
       if !order.user_id && logged_in?
@@ -133,5 +138,5 @@ puts ">>>>>>>>>>>>>>>>> order: #{@order}"
       end
     end
 =end  
-end
+  end
 end
