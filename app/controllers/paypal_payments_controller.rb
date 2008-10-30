@@ -12,7 +12,7 @@ class PaypalPaymentsController < Spree::BaseController
     # mark the checkout process as complete (even if the ipn results in a failure - no point in letting the user 
     # edit the order now)
     @order.update_attribute("checkout_complete", true)                   
-    object.update_attribute("email", params[:payer_email])
+    object.update_attributes(:email => params[:payer_email], :payer_id => params[:payer_id])
     ipn = Paypal::Notification.new(request.raw_post)
 
     # create a transaction which records the details of the notification
@@ -58,7 +58,7 @@ class PaypalPaymentsController < Spree::BaseController
     # its possible that the IPN has already been received at this point so that
     unless @order.paypal_payment
       # create a payment and record the successful transaction
-      paypal_payment = PaypalPayment.create(:order => @order, :email => params[:payer_email])
+      paypal_payment = PaypalPayment.create(:order => @order, :email => params[:payer_email], :payer_id => params[:payer_id])
       @order.paypal_payment = paypal_payment
       paypal_payment.txns.create(:amount => params[:mc_gross].to_d, 
                                  :status => "Processed",

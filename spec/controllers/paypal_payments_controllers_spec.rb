@@ -15,7 +15,7 @@ describe PaypalPaymentsController do
   describe "create" do
     
     def do_create
-      post :create, :order_id  => @order.id, :payer_email => "test@example.com"
+      post :create, :order_id  => @order.id, :payer_email => "test@example.com", :payer_id => "FOO"
     end
     
     before(:each) { @ipn.stub!(:acknowledge).and_return(true) }
@@ -26,6 +26,10 @@ describe PaypalPaymentsController do
     it "should set the paypal payment email" do
       do_create
       @order.paypal_payment.email.should == "test@example.com"
+    end
+    it "should set the paypal payment payer id" do
+      do_create
+      @order.paypal_payment.payer_id.should == "FOO"
     end
     it "should create a transaction for the paypal payment" do
       do_create
@@ -78,7 +82,7 @@ describe PaypalPaymentsController do
   describe "successful" do
     describe "successful in general", :shared => true do
       def do_successful
-        post :successful, :order_id  => @order.id, :mc_gross => @order.total.to_s, :payer_email => "test@example.com"
+        post :successful, :order_id  => @order.id, :mc_gross => @order.total.to_s, :payer_email => "test@example.com", :payer_id => "FOO"
       end
       it "should set the IP address of the order" do
         request.env['REMOTE_ADDR'] = "1.2.3.4"
@@ -114,9 +118,13 @@ describe PaypalPaymentsController do
         do_successful
         @order.checkout_complete.should be_true
       end
-      it "should set the payment email" do
+      it "should set the paypal payment email" do
         do_successful
         @order.paypal_payment.email.should == "test@example.com"
+      end
+      it "should set the paypal payment payer id" do
+        do_successful
+        @order.paypal_payment.payer_id.should == "FOO"
       end
       it_should_behave_like "successful in general"         
     end
