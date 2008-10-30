@@ -75,7 +75,7 @@ class PaypalPaymentsController < Spree::BaseController
       redirect_to order_url(@order) and return
     else
       flash[:notice] = "Please create an account or login so we can associate this order with an account"
-      session[:return_to] = order_url(@order)
+      session[:return_to] = "#{order_url(@order)}?payer_id=#{@order.paypal_payment.payer_id}"
       redirect_to signup_path
     end
   end
