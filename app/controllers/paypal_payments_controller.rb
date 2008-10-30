@@ -70,6 +70,9 @@ class PaypalPaymentsController < Spree::BaseController
       @order.pend_payment!
     end
     
+    # remove order from the session (its not really practical to allow the user to edit the session anymore)
+    session[:order_id] = nil
+    
     if logged_in?
       @order.update_attribute("user", current_user)
       redirect_to order_url(@order) and return

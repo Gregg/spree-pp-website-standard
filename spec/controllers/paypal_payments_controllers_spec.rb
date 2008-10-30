@@ -104,6 +104,12 @@ describe PaypalPaymentsController do
         do_successful
         response.should redirect_to(signup_path)
       end
+      it "should remove the order from the session" do
+        # order should be in the session prior to reaching this controller so we'll simulate that fact
+        session[:order_id] = "FOO"
+        do_successful
+        session[:order_id].should be_nil
+      end
     end
     describe "when ipn has not yet been received" do
       it "should create a payment" do
