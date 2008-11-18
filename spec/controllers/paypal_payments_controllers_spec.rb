@@ -5,7 +5,8 @@ describe PaypalPaymentsController do
   fixtures :users
   
   before(:each) do 
-    @order = Order.create(:id => 100, :number => "SAMP-1001", :state => "in_progress", :total => 75.00)
+    @order = Order.create(:id => 100, :number => "SAMP-1001", :total => 75.00)
+    @order.state = "in_progress"
     Order.stub!(:find).with(any_args).and_return(@order)
     @ipn = mock("IPN Notification", :invoice => @order.number, :gross => @order.total.to_s, :transaction_id => "TXN1", :fee => "2.00", :currency => "USD", :status => "foo", :received_at => Time.now)
     # mock the parsing of the IPN object since that's just active_merchant functionality that is already tested 
