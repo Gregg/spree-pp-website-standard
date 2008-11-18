@@ -48,10 +48,10 @@ class PpWebsiteStandardExtension < Spree::Extension
     # add new events and states to the FSM
     fsm = Order.state_machines['state']  
     fsm.events["fail_payment"] = PluginAWeek::StateMachine::Event.new(fsm, "fail_payment")
-    fsm.events["fail_payment"].transition(:to => 'payment_failure')
+    fsm.events["fail_payment"].transition(:to => 'payment_failure', :from => ['in_progress', 'payment_pending'])
 
     fsm.events["pend_payment"] = PluginAWeek::StateMachine::Event.new(fsm, "pend_payment")
-    fsm.events["pend_payment"].transition(:to => 'payment_pending')    
+    fsm.events["pend_payment"].transition(:to => 'payment_pending', :from => 'in_progress')    
     fsm.after_transition :to => 'payment_pending', :do => lambda {|order| order.update_attribute(:checkout_complete, true)}  
 
     fsm.events["pay"] = PluginAWeek::StateMachine::Event.new(fsm, "pay")
