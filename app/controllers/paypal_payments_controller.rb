@@ -4,7 +4,7 @@ class PaypalPaymentsController < Spree::BaseController
   before_filter :load_object, :only => :successful
   layout 'application'
   
-  resource_controller :singleton
+  resource_controller
   belongs_to :order
 
   # NOTE: The Paypal Instant Payment Notification (IPN) results in the creation of a PaypalPayment
@@ -56,10 +56,9 @@ class PaypalPaymentsController < Spree::BaseController
   def successful 
     @order.update_attribute("ip_address", request.env['REMOTE_ADDR'] || "unknown")
     # its possible that the IPN has already been received at this point so that
-    unless @order.paypal_payment
+    if @order.paypal_payments.empty?
       # create a payment and record the successful transaction
-      paypal_payment = PaypalPayment.create(:order => @order, :email => params[:payer_email], :payer_id => params[:payer_id])
-      @order.paypal_payment = paypal_payment
+      paypal_payment = @order.paypal_payments.create(:email => params[:payer_email], :payer_id => params[:payer_id])
       paypal_payment.txns.create(:amount => params[:mc_gross].to_d, 
                                  :status => "Processed",
                                  :transaction_id => params[:txn_id],
@@ -67,7 +66,9 @@ class PaypalPaymentsController < Spree::BaseController
                                  :currency_type => params[:mc_currency],
                                  :received_at => params[:payment_date])
       # advance the state
-      @order.pend_payment!
+      @order.pend_payment!  
+    else
+      paypal_payment = @order.paypal_payments.last
     end
     
     # remove order from the session (its not really practical to allow the user to edit the session anymore)
@@ -78,7 +79,7 @@ class PaypalPaymentsController < Spree::BaseController
       redirect_to order_url(@order) and return
     else
       flash[:notice] = "Please create an account or login so we can associate this order with an account"
-      session[:return_to] = "#{order_url(@order)}?payer_id=#{@order.paypal_payment.payer_id}"
+      session[:return_to] = "#{order_url(@order)}?payer_id=#{paypal_payment.payer_id}"
       redirect_to signup_path
     end
   end

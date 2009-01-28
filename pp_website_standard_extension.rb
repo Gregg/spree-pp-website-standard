@@ -1,25 +1,17 @@
 # Uncomment this if you reference any of your controllers in activate
 require_dependency 'application'
-
+=begin
 unless RAILS_ENV == 'production'
   PAYPAL_ACCOUNT = 'joe@bidness.com'
   ActiveMerchant::Billing::Base.mode = :test
 else
   PAYPAL_ACCOUNT = 'Gregg@railsenvy.com'
 end
-
+=end
 class PpWebsiteStandardExtension < Spree::Extension
-  version "1.1"
+  version "0.6.x"
   description "Describe your extension here"
-  url "http://yourwebsite.com/spree_pp_website_standard"
-
-  define_routes do |map|
-    map.resources :orders do |order|
-      # we're kind of abusing the notion of a restful collection here but we're in the weird position of 
-      # not being able to create the payment before sending the request to paypal
-      order.resource :paypal_payment, :collection => {:successful => :post}
-    end  
-  end
+  url "http://github.com/Gregg/spree-pp-website-standard/tree/master"
   
   def activate
 
@@ -38,7 +30,7 @@ class PpWebsiteStandardExtension < Spree::Extension
       private
       def associate_order  
         return unless payer_id = params[:payer_id]
-        orders = Order.find(:all, :include => :paypal_payment, :conditions => ['paypal_payments.payer_id = ? AND orders.user_id is null', payer_id])
+        orders = Order.find(:all, :include => :paypal_payments, :conditions => ['payments.payer_id = ? AND orders.user_id is null', payer_id])
         orders.each do |order|
           order.update_attribute("user", current_user)
         end
@@ -54,17 +46,11 @@ class PpWebsiteStandardExtension < Spree::Extension
     fsm.events["pend_payment"].transition(:to => 'payment_pending', :from => 'in_progress')    
     fsm.after_transition :to => 'payment_pending', :do => lambda {|order| order.update_attribute(:checkout_complete, true)}  
 
-    fsm.events["pay"] = PluginAWeek::StateMachine::Event.new(fsm, "pay")
     fsm.events["pay"].transition(:to => 'paid', :from => ['payment_pending', 'in_progress'])
-    fsm.after_transition :to => 'paid', :do => :complete_order  
-
-    fsm.events["ship"].transition(:to => 'shipped', :from => 'paid')
-    
-    # add a PaypalPayment association to the Order model
+                                  
     Order.class_eval do 
-      has_one :paypal_payment
+      has_many :paypal_payments
     end
-  
   end
   
   def deactivate

@@ -23,15 +23,41 @@ Order.class_eval do
   end
 end
 </pre>  
+        
+# Configuration
 
- * TODO: User account creation (if necessary) after notify and associate order with a user
- * TODO: Make the paypal account stuff configurable via new preferences system
- * TODO: Taxes
- * TODO: Shipping
- * TODO: Refunds
+Be sure to configure the following configuration parameters.  
+
+Example
+
+<pre>
+Spree::Paypal::Config[:account] = "foo@example.com"
+Spree::Paypal::Config[:ipn_notify_host] = "http://123.456.78:3000"
+Spree::Paypal::Config[:success_url] = "http://localhost:3000/checkout/success"
+</pre>
+
+Or even better, you can configure these in a migration for your site extension.
+
+<pre>
+class AddPaypalStandardConfigurations < ActiveRecord::Migration
+  def self.up
+    Spree::Paypal::Config.set(:account => "foo@example.com")
+    Spree::Paypal::Config.set(:ipn_notify_host => "http://123.456.78:3000")
+    Spree::Paypal::Config.set(:success_url => "http://localhost:3000/checkout/success")
+  end
+
+  def self.down
+  end
+end
+</pre>
 
 # Installation 
 
 <pre>
 script/extension install git://github.com/Gregg/spree-pp-website-standard.git  
 </pre>
+
+* TODO: User account creation (if necessary) after notify and associate order with a user
+* TODO: Taxes
+* TODO: Shipping
+* TODO: Refunds

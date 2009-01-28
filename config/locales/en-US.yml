@@ -1,0 +1,7 @@
+--- 
+en-US: 
+  please_select_your_country: "Please select your country"
+  please_enter_valid_zip: "Please enter a valid zipcode."
+  zip_code_if_you_have_one: "Zipcode (if you have one)" 
+  payment_failure: "Payment Failure"
+  payment_pending: "Payment Pending"  
