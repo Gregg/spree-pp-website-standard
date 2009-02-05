@@ -2,7 +2,10 @@
 
 Overrides the default Spree checkout process and uses offsite payment processing via PayPal's Website Payment Standard (WPS).  
 
-You'll want to test this using a paypal sandbox account first.  Once you have a business account, you'll want to turn on Instant Payment Notification (IPN).  This is how your application will be notified when a transaction is complete.  Certain transactions aren't completed immediately.  Because of this we use IPN for your application to get notified when the transaction is complete.  IPN means that our application gets an incoming request from Paypal when the transaction goes through.  To turn IPN on in your sandbox account, login, hit "profile", and go to Instant Payment Notification Preferences.  You'll need to turn it on, and point it to your http://www.yourdomain.com/notify.  
+You'll want to test this using a paypal sandbox account first.  Once you have a business account, you'll want to turn on Instant Payment Notification (IPN).  This is how your application will be notified when a transaction is complete.  Certain transactions aren't completed immediately.  Because of this we use IPN for your application to get notified when the transaction is complete.  IPN means that our application gets an incoming request from Paypal when the transaction goes through.  
+
+__IMPORTANT__
+Older versions of this extension mentioned configuring your notify url in the PP profile.  This no longer seems to be necessary, and in fact, if you have previously configured your URL as one that ends in `notify` then you are using an outdated return URL.  Just clear it out.  The notify URL is now being posted with the checkout form and should be sufficient.
 
 Regarding Taxes and shipping, we assumed you'd want to use Paypal's system for this, which can also be configured through the "profile" page.  Taxes have been tested (sales tax), but not shipping, so you may want to give that a test run on the sandbox.
 
