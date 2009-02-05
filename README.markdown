@@ -57,7 +57,10 @@ end
 script/extension install git://github.com/Gregg/spree-pp-website-standard.git  
 </pre>
 
-* TODO: User account creation (if necessary) after notify and associate order with a user
+# IPN Notes
+
+Real world testing indicates that IPN can be very slow.  If you are wanting to test the IPN piece Paypal now has an IPN tool on their developer site.  Just use the correct URL from the hidden field on your Spree checkout screen.  In the IPN tool, change the transaction type to `cart checkout` and change the `mc_gross` variable to match your order total.
+
 * TODO: Taxes
 * TODO: Shipping
 * TODO: Refunds
